@@ -10,6 +10,7 @@ import { stringifyStream } from '@prairielearn/csv';
 import * as error from '@prairielearn/error';
 import * as sqldb from '@prairielearn/postgres';
 
+import { Scorebar } from '../../components/Scorebar.html.js';
 import {
   updateAssessmentStatistics,
   updateAssessmentStatisticsForCourseInstance,
@@ -51,6 +52,8 @@ router.get(
       .filter((row) => row.needs_statistics_update)
       .map((row) => row.id);
 
+    // This component is in use in the assessmentStats.ejs template, and is temporarily saved in locals in this router until that page is converted to TS.
+    res.locals.Scorebar = Scorebar;
     res.render(import.meta.filename.replace(/\.js$/, '.ejs'), res.locals);
   }),
 );
