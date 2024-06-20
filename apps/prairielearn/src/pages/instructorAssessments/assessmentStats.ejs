@@ -40,6 +40,7 @@
   <% } else { %>
     <% if (row.score_stat_number > 0) { %>
     <div class="d-inline-block align-middle" style="min-width: 8em; max-width: 20em;">
+      <%# This page is the last reference to the scorebar partial. Once this is converted to use the Scorebar component, the partial can be deleted. %>
       <%- include('../partials/scorebar', {score: Math.round(row.score_stat_mean)}); %>
     </div>
     <% } else { %>
