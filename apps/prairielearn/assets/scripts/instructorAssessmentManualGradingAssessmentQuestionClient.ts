@@ -15,6 +15,7 @@ onDocumentReady(() => {
     maxPoints,
     groupWork,
     maxAutoPoints,
+    botGradingEnabled,
   } = document.getElementById('grading-table')?.dataset ?? {};
 
   document.querySelectorAll<HTMLFormElement>('form[name=grading-form]').forEach((form) => {
@@ -36,12 +37,25 @@ onDocumentReady(() => {
     autoRefresh: true,
     autoRefreshStatus: false,
     autoRefreshInterval: 30,
-    buttonsOrder: ['columns', 'refresh', 'autoRefresh', 'showStudentInfo', 'status'],
+    buttonsOrder: ['columns', 'refresh', 'autoRefresh', 'showStudentInfo', 'status', 'botGrade'],
     theadClasses: 'thead-light',
     stickyHeader: true,
     filterControl: true,
     rowStyle: (row) => (row.requires_manual_grading ? {} : { classes: 'text-muted bg-light' }),
     buttons: {
+      botGrade: {
+        text: 'Bot Grade All',
+        icon: 'fa-pen',
+        render: botGradingEnabled === 'true',
+        attributes: {
+          id: 'js-bot-grade-button',
+          title: 'Bot grade all instances',
+        },
+        event: () => {
+          const form = document.getElementById('bot-grading') as HTMLFormElement;
+          form?.submit();
+        },
+      },
       showStudentInfo: {
         text: 'Show student info',
         icon: 'fa-eye',
@@ -112,9 +126,9 @@ onDocumentReady(() => {
                   : ''}
               </a>
               ${row.assessment_open
-                ? html`<span title="Assessment instance is still open" data-toggle="tooltip"
-                    ><i class="fas fa-exclamation-triangle text-warning"></i
-                  ></span>`
+                ? html`<span title="Assessment instance is still open" data-toggle="tooltip">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                  </span>`
                 : ''}`.toString(),
         },
         {
@@ -201,7 +215,10 @@ onDocumentReady(() => {
 async function ajaxSubmit(this: HTMLFormElement, e: SubmitEvent) {
   e.preventDefault();
 
-  const postBody = new URLSearchParams(new FormData(this, e.submitter) as any);
+  const postBody = new URLSearchParams(
+    // https://github.com/microsoft/TypeScript/issues/30584
+    new FormData(this, e.submitter) as any,
+  );
 
   const response = await fetch(this.action, { method: 'POST', body: postBody }).catch(
     (err) => ({ status: null, statusText: err.toString() }) as const,
@@ -209,24 +226,25 @@ async function ajaxSubmit(this: HTMLFormElement, e: SubmitEvent) {
   if (response.status !== 200) {
     console.error(response.status, response.statusText);
     // TODO Better user notification of update failure
-    return;
+    return null;
   }
+  $('#grading-table').bootstrapTable('refresh');
   return await response.json();
 }
 
 async function pointsFormEventListener(this: HTMLFormElement, event: SubmitEvent) {
   const data = await ajaxSubmit.call(this, event);
-  if (data.conflict_grading_job_id) {
+  if (data?.conflict_grading_job_id) {
     $('#grading-conflict-modal')
       .find('a.conflict-details-link')
       .attr('href', data.conflict_details_url);
     $('#grading-conflict-modal').modal({});
   }
-  $('#grading-table').bootstrapTable('refresh');
 }
 
 function updatePointsPopoverHandlers(this: Element) {
   document.querySelectorAll<HTMLFormElement>('form[name=edit-points-form]').forEach((form) => {
+    form.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus();
     // Ensures that, if two popovers are open at the same time, the event listener is not added twice
     form.removeEventListener('submit', pointsFormEventListener);
     form.addEventListener('submit', pointsFormEventListener);
